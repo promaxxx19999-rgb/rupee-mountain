@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rupee Mountain - Secure UPI Payment Gateway</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- QRCode.js Library for crisp dynamic QR generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top left, #064e3b, #0f172a 55%, #022c22);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .brand-font {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Animated background blobs */
+        .blob-1 {
+            position: fixed;
+            top: -10%;
+            left: -10%;
+            width: 380px;
+            height: 380px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.35) 0%, rgba(16, 185, 129, 0) 70%);
+            filter: blur(40px);
+            z-index: 0;
+            animation: floatSlow 10s infinite alternate ease-in-out;
+        }
+        .blob-2 {
+            position: fixed;
+            bottom: -10%;
+            right: -10%;
+            width: 420px;
+            height: 420px;
+            background: radial-gradient(circle, rgba(20, 184, 166, 0.3) 0%, rgba(20, 184, 166, 0) 70%);
+            filter: blur(50px);
+            z-index: 0;
+            animation: floatSlow 12s infinite alternate-reverse ease-in-out;
+        }
+        @keyframes floatSlow {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, 25px) scale(1.08); }
+        }
+        /* QR Scanner laser animation */
+        .scan-line {
+            position: absolute;
+            left: 8%;
+            right: 8%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #10b981, #059669, #10b981, transparent);
+            box-shadow: 0 0 12px #10b981;
+            border-radius: 999px;
+            animation: scanMove 2.6s infinite ease-in-out;
+            pointer-events: none;
+        }
+        @keyframes scanMove {
+            0% { top: 8%; opacity: 0.3; }
+            50% { top: 90%; opacity: 1; }
+            100% { top: 8%; opacity: 0.3; }
+        }
+        /* Subtle pulse on Pay Now button */
+        .btn-shine {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-shine::after {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -60%;
+            width: 40%;
+            height: 200%;
+            background: rgba(255, 255, 255, 0.25);
+            transform: rotate(30deg);
+            animation: shineSweep 3.5s infinite;
+        }
+        @keyframes shineSweep {
+            0% { left: -60%; }
+            30% { left: 120%; }
+            100% { left: 120%; }
+        }
+        /* Custom QR container alignment */
+        #qrcode img, #qrcode canvas {
+            margin: 0 auto;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col items-center justify-center py-6 px-4 relative select-none sm:select-auto">
+
+    <!-- Ambient Decorative Background Glows -->
+    <div class="blob-1"></div>
+    <div class="blob-2"></div>
+
+    <!-- Custom Toast Notification -->
+    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 -translate-y-4 transition-all duration-300 bg-slate-900/95 text-white border border-emerald-500/40 px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2.5 text-sm font-medium">
+        <span class="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-400">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </span>
+        <span id="toast-message">UPI ID Copied Successfully!</span>
+    </div>
+
+    <!-- Main Payment Gateway Card -->
+    <main class="w-full max-w-md z-10 my-4">
+        <div class="bg-white/95 backdrop-blur-xl rounded-[28px] shadow-[0_25px_70px_-15px_rgba(0,0,0,0.5)] border border-white/40 overflow-hidden">
+            
+            <!-- Top Vibrant Brand Header -->
+            <div class="relative bg-gradient-to-br from-[#f8f9f5] via-[#eef6f0] to-[#e0f2e9] pt-7 pb-5 px-6 text-center border-b border-emerald-900/10">
+                <!-- Top Security Pill -->
+                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-800/10 border border-emerald-800/15 text-emerald-900 text-[11px] font-semibold mb-3">
+                    <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>100% RBI Compliant UPI Checkout</span>
+                </div>
+
+                <!-- Rupee Mountain Big Logo & Brand Name (Matching uploaded brand identity) -->
+                <div class="flex flex-col items-center justify-center">
+                    <div class="flex items-center justify-center gap-3.5 mb-2">
+                        <!-- Custom SVG Recreating the Rupee Mountain 'M' Arch Logo -->
+                        <div class="w-16 h-14 flex items-center justify-center drop-shadow-sm">
+                            <svg viewBox="0 0 120 95" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                    <linearGradient id="rmGreenLeft" x1="0" y1="0" x2="1" y2="1">
+                                        <stop offset="0%" stop-color="#0b7a4b"/>
+                                        <stop offset="100%" stop-color="#065f3c"/>
+                                    </linearGradient>
+                                    <linearGradient id="rmGreenRight" x1="0" y1="0" x2="1" y2="1">
+                                        <stop offset="0%" stop-color="#108956"/>
+                                        <stop offset="100%" stop-color="#075435"/>
+                                    </linearGradient>
+                                </defs>
+                                <!-- Left Pillar & Mountain Peak -->
+                                <path d="M14 70 V22 C14 10 26 8 34 16 L60 40 L60 58 L32 34 V62 Z" fill="url(#rmGreenLeft)"/>
+                                <!-- Right Pillar & Mountain Peak -->
+                                <path d="M106 70 V22 C106 10 94 8 86 16 L60 40 L60 58 L88 34 V62 Z" fill="url(#rmGreenRight)"/>
+                                <!-- Center V Highlight -->
+                                <path d="M45 26 L60 40 L75 26 L60 56 Z" fill="#18a066" opacity="0.55"/>
+                                <!-- Double Swoosh Bridge at Bottom -->
+                                <path d="M12 80 C38 46 82 46 108 80" stroke="#0b7a4b" stroke-width="6.5" stroke-linecap="round"/>
+                                <path d="M20 88 C42 60 78 60 100 88" stroke="#12945d" stroke-width="4.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div class="text-left">
+                            <h1 class="brand-font text-2xl sm:text-3xl font-extrabold tracking-tight text-[#146c4e] leading-none">
+                                Rupee Mountain
+                            </h1>
+                            <p class="text-[11px] font-medium text-slate-500 mt-1">Your quick credit journey</p>
+                        </div>
+                    </div>
+
+                    <!-- Payment Request Badge -->
+                    <div class="mt-2 inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white px-5 py-1.5 rounded-full shadow-md shadow-emerald-700/20">
+                        <span class="w-2 h-2 rounded-full bg-amber-300 animate-ping"></span>
+                        <span class="text-xs font-bold uppercase tracking-widest">Payment Request</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5-Minute Countdown Timer Bar -->
+            <div class="bg-slate-900 text-white px-6 py-2.5 flex items-center justify-between relative overflow-hidden">
+                <div class="flex items-center gap-2 z-10">
+                    <svg class="w-4 h-4 text-amber-400 animate-spin" style="animation-duration: 6s;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-xs text-slate-300 font-medium">Session expires in:</span>
+                </div>
+                <div class="flex items-center gap-1.5 z-10">
+                    <span id="timer-badge" class="font-mono font-bold text-sm sm:text-base px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                        05:00
+                    </span>
+                </div>
+                <!-- Progress Bar Underneath -->
+                <div id="timer-progress" class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-emerald-400 via-teal-400 to-amber-400 transition-all duration-1000" style="width: 100%;"></div>
+            </div>
+
+            <!-- Main Card Body -->
+            <div class="p-6 flex flex-col items-center">
+                
+                <!-- Amount Display (Above QR Code as requested) -->
+                <div class="text-center mb-4">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Payable Amount</p>
+                    <div class="flex items-baseline justify-center gap-1 mt-0.5">
+                        <span class="text-2xl sm:text-3xl font-extrabold text-emerald-600">₹</span>
+                        <span id="display-amount" class="brand-font text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">2,500.00</span>
+                    </div>
+                </div>
+
+                <!-- Dynamic QR Code Box with Animated Scanner -->
+                <div class="relative p-4 rounded-3xl bg-gradient-to-b from-emerald-50/80 to-teal-50/50 border-2 border-emerald-500/30 shadow-inner flex flex-col items-center justify-center group">
+                    <!-- Corner Accents -->
+                    <div class="w-6 h-6 border-t-4 border-l-4 border-emerald-600 rounded-tl-xl absolute -top-1 -left-1"></div>
+                    <div class="w-6 h-6 border-t-4 border-r-4 border-emerald-600 rounded-tr-xl absolute -top-1 -right-1"></div>
+                    <div class="w-6 h-6 border-b-4 border-l-4 border-emerald-600 rounded-bl-xl absolute -bottom-1 -left-1"></div>
+                    <div class="w-6 h-6 border-b-4 border-r-4 border-emerald-600 rounded-br-xl absolute -bottom-1 -right-1"></div>
+
+                    <!-- QR Code Canvas Wrapper -->
+                    <div class="relative bg-white p-3.5 rounded-2xl shadow-md border border-slate-100">
+                        <div id="qrcode" class="w-[190px] h-[190px] flex items-center justify-center"></div>
+                        <!-- Center Mini Brand Badge over QR -->
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div class="w-10 h-10 rounded-xl bg-white shadow-md border-2 border-emerald-600 flex items-center justify-center font-extrabold text-emerald-700 text-sm">
+                                ₹M
+                            </div>
+                        </div>
+                        <!-- Animated Laser Line -->
+                        <div id="qr-scan-line" class="scan-line"></div>
+
+                        <!-- Expired Overlay (Hidden until 5m timer ends) -->
+                        <div id="expired-overlay" class="hidden absolute inset-0 bg-slate-900/90 backdrop-blur-sm rounded-2xl flex-col items-center justify-center p-4 text-center text-white">
+                            <svg class="w-10 h-10 text-rose-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p class="font-bold text-sm">QR Session Expired</p>
+                            <button onclick="resetTimer()" class="mt-2 px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-xs font-bold rounded-full shadow">
+                                Refresh QR
+                            </button>
+                        </div>
+                    </div>
+
+                    <span class="mt-2.5 text-[11px] font-semibold text-emerald-800 bg-emerald-100/90 px-3 py-0.5 rounded-full">
+                        Scan with any UPI App
+                    </span>
+                </div>
+
+                <!-- Merchant Name & Verified Badge (Below QR Code) -->
+                <div class="mt-4 text-center">
+                    <div class="inline-flex items-center gap-1.5">
+                        <span class="text-xs text-slate-400 font-medium">Paying to:</span>
+                        <h2 id="display-merchant" class="font-bold text-slate-800 text-base sm:text-lg">Rupee Mountain Financial</h2>
+                        <!-- Verified Tick -->
+                        <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20" title="Verified Merchant">
+                            <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <!-- Secondary Amount Confirmation under Merchant Name -->
+                    <div class="mt-1">
+                        <span class="inline-block text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-0.5 rounded-md">
+                            Fixed Amount: ₹<span id="display-amount-sub">2,500.00</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- UPI ID Display & Copy Box -->
+                <div class="w-full mt-4 bg-slate-50 border border-slate-200/90 rounded-2xl p-2.5 pl-4 flex items-center justify-between gap-2 shadow-sm">
+                    <div class="overflow-hidden">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Merchant UPI ID</p>
+                        <p id="display-upi" class="text-xs sm:text-sm font-mono font-bold text-slate-800 truncate select-all">rupeemountain@icici</p>
+                    </div>
+                    <button onclick="copyUpiId()" id="copy-btn" class="shrink-0 flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-xs px-3.5 py-2 rounded-xl shadow-sm transition-all active:scale-95">
+                        <svg id="copy-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                        <span id="copy-text">Copy ID</span>
+                    </button>
+                </div>
+
+                <!-- Primary "Pay Now" Deep Link Action Button -->
+                <a id="pay-now-btn" href="#" onclick="triggerPayNow(event)" class="btn-shine w-full mt-5 py-4 px-6 rounded-2xl bg-gradient-to-r from-[#0b7a4b] via-[#10b981] to-[#0d9488] hover:from-[#09633d] hover:to-[#0f766e] text-white font-bold text-base sm:text-lg shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-3 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0">
+                    <span>Pay Now ₹<span id="btn-amount">2,500.00</span></span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                    </svg>
+                </a>
+                <p class="text-[11px] text-slate-400 mt-2 text-center">
+                    Clicking <strong>Pay Now</strong> opens GPay, PhonePe, Paytm or BHIM directly with pre-filled amount
+                </p>
+
+                <!-- Supported UPI App Badges -->
+                <div class="w-full mt-5 pt-4 border-t border-slate-100">
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 text-center mb-2.5">Supported UPI Apps</p>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="triggerPayNow(event)" class="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition">
+                            <span class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-extrabold text-xs flex items-center justify-center border border-blue-100">GPay</span>
+                            <span class="text-[10px] font-medium text-slate-600 mt-1">Google Pay</span>
+                        </button>
+                        <button onclick="triggerPayNow(event)" class="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition">
+                            <span class="w-8 h-8 rounded-full bg-purple-50 text-purple-700 font-extrabold text-xs flex items-center justify-center border border-purple-100">Pe</span>
+                            <span class="text-[10px] font-medium text-slate-600 mt-1">PhonePe</span>
+                        </button>
+                        <button onclick="triggerPayNow(event)" class="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition">
+                            <span class="w-8 h-8 rounded-full bg-sky-50 text-sky-600 font-extrabold text-[10px] flex items-center justify-center border border-sky-100">Paytm</span>
+                            <span class="text-[10px] font-medium text-slate-600 mt-1">Paytm</span>
+                        </button>
+                        <button onclick="triggerPayNow(event)" class="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition">
+                            <span class="w-8 h-8 rounded-full bg-orange-50 text-orange-600 font-extrabold text-[10px] flex items-center justify-center border border-orange-100">BHIM</span>
+                            <span class="text-[10px] font-medium text-slate-600 mt-1">BHIM / All</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Trust Bar -->
+            <div class="bg-slate-50 px-6 py-3 border-t border-slate-200/70 flex items-center justify-between text-[11px] text-slate-500">
+                <span class="flex items-center gap-1 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    256-Bit SSL Encrypted
+                </span>
+                <span class="font-semibold text-slate-600">Powered by Rupee Mountain</span>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        /* ============================================================================
+           DEVELOPER CONFIGURATION (Yahan se Merchant Name, UPI ID aur Amount badlein)
+           ============================================================================
+           Aap niche diye gaye PAYMENT_CONFIG mein apni details edit kar sakte hain:
+           1. merchantName : Aapki company ya merchant ka naam
+           2. upiId        : Aapki UPI ID (jiska QR code aur payment link banega)
+           3. amount       : Fixed Amount (Rupees mein)
+           4. transactionNote : Payment remark / note
+           ============================================================================ */
+        const PAYMENT_CONFIG = {
+            merchantName: "Rupee Mountain Financial",
+            upiId: "rupeemountainn@ybl",
+            amount: "10.00",
+            transactionNote: "Rupee Mountain Payment Request"
+        };
+
+        let countdownSeconds = 5 * 60; // 5 Minutes (300 seconds)
+        let timerInterval = null;
+        let qrInstance = null;
+
+        // Format currency in Indian style (e.g. 10.00)
+        function formatINR(value) {
+            const num = parseFloat(value) || 0;
+            return num.toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        // Build standard NPCI UPI Deep-link URI
+        function buildUpiUri() {
+            const pa = encodeURIComponent(PAYMENT_CONFIG.upiId.trim());
+            const pn = encodeURIComponent(PAYMENT_CONFIG.merchantName.trim());
+            const am = encodeURIComponent(parseFloat(PAYMENT_CONFIG.amount).toFixed(2));
+            const tn = encodeURIComponent(PAYMENT_CONFIG.transactionNote.trim());
+            return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&tn=${tn}&cu=INR`;
+        }
+
+        // Render UI details & regenerate QR Code
+        function updateGatewayView() {
+            const formattedAmt = formatINR(PAYMENT_CONFIG.amount);
+            const upiUri = buildUpiUri();
+
+            // Update Text Elements
+            document.getElementById('display-merchant').textContent = PAYMENT_CONFIG.merchantName;
+            document.getElementById('display-upi').textContent = PAYMENT_CONFIG.upiId;
+            document.getElementById('display-amount').textContent = formattedAmt;
+            document.getElementById('display-amount-sub').textContent = formattedAmt;
+            document.getElementById('btn-amount').textContent = formattedAmt;
+
+            // Update Pay Now anchor href
+            const payBtn = document.getElementById('pay-now-btn');
+            payBtn.setAttribute('href', upiUri);
+
+            // Generate crisp QR Code
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = "";
+            qrInstance = new QRCode(qrContainer, {
+                text: upiUri,
+                width: 190,
+                height: 190,
+                colorDark: "#064e3b",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+
+        // 5-Minute Countdown Timer Logic
+        function startFiveMinTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            const totalSeconds = 5 * 60;
+            const badge = document.getElementById('timer-badge');
+            const progress = document.getElementById('timer-progress');
+            const expiredOverlay = document.getElementById('expired-overlay');
+            const scanLine = document.getElementById('qr-scan-line');
+
+            expiredOverlay.classList.add('hidden');
+            expiredOverlay.classList.remove('flex');
+            scanLine.classList.remove('hidden');
+
+            timerInterval = setInterval(() => {
+                if (countdownSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    badge.textContent = "00:00";
+                    badge.className = "font-mono font-bold text-sm sm:text-base px-2.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-400/40";
+                    progress.style.width = "0%";
+                    expiredOverlay.classList.remove('hidden');
+                    expiredOverlay.classList.add('flex');
+                    scanLine.classList.add('hidden');
+                    showToast("Payment session expired! Click Refresh QR.");
+                    return;
+                }
+
+                countdownSeconds--;
+                const mins = String(Math.floor(countdownSeconds / 60)).padStart(2, '0');
+                const secs = String(countdownSeconds % 60).padStart(2, '0');
+                badge.textContent = `${mins}:${secs}`;
+
+                // Update progress bar percentage
+                const pct = (countdownSeconds / totalSeconds) * 100;
+                progress.style.width = `${pct}%`;
+
+                // Warning styling when under 60 seconds
+                if (countdownSeconds < 60) {
+                    badge.className = "font-mono font-bold text-sm sm:text-base px-2.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-400/40 animate-pulse";
+                }
+            }, 1000);
+        }
+
+        function resetTimer() {
+            countdownSeconds = 5 * 60;
+            const badge = document.getElementById('timer-badge');
+            badge.textContent = "05:00";
+            badge.className = "font-mono font-bold text-sm sm:text-base px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/30";
+            document.getElementById('timer-progress').style.width = "100%";
+            startFiveMinTimer();
+            showToast("5-Minute Timer Restarted!");
+        }
+
+        // Copy UPI ID to Clipboard
+        function copyUpiId() {
+            const upiText = PAYMENT_CONFIG.upiId;
+            const tempInput = document.createElement("textarea");
+            tempInput.value = upiText;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+
+            // Button visual feedback
+            const copyText = document.getElementById('copy-text');
+            const copyBtn = document.getElementById('copy-btn');
+            copyText.textContent = "Copied!";
+            copyBtn.classList.add('bg-emerald-600', 'text-white', 'border-emerald-600');
+            copyBtn.classList.remove('bg-white', 'text-emerald-700');
+
+            showToast(`UPI ID "${upiText}" Copied!`);
+
+            setTimeout(() => {
+                copyText.textContent = "Copy ID";
+                copyBtn.classList.remove('bg-emerald-600', 'text-white', 'border-emerald-600');
+                copyBtn.classList.add('bg-white', 'text-emerald-700');
+            }, 2200);
+        }
+
+        // Trigger UPI Deep Link (Pay Now)
+        function triggerPayNow(event) {
+            event.preventDefault();
+            if (countdownSeconds <= 0) {
+                showToast("Session expired! Please refresh the QR timer first.");
+                return;
+            }
+            const upiUri = buildUpiUri();
+            showToast("Opening UPI App to pay ₹" + formatINR(PAYMENT_CONFIG.amount) + "...");
+            window.location.href = upiUri;
+        }
+
+        // Show Custom Notification Toast
+        let toastTimeout;
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            toast.classList.remove('opacity-0', '-translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-4');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 2800);
+        }
+
+        // Initialize URL Query Params Support (e.g., ?pa=xyz@upi&pn=Name&am=500)
+        function loadUrlParameters() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('pn')) PAYMENT_CONFIG.merchantName = params.get('pn');
+            if (params.get('pa')) PAYMENT_CONFIG.upiId = params.get('pa');
+            if (params.get('am')) PAYMENT_CONFIG.amount = parseFloat(params.get('am')).toFixed(2);
+        }
+
+        window.onload = function () {
+            loadUrlParameters();
+            updateGatewayView();
+            startFiveMinTimer();
+        };
+    </script>
+</body>
+</html>
